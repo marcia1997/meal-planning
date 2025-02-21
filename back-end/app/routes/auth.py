@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
+from database import users_collection
 
 # Secret key for signing JWT tokens
 SECRET_KEY = "supersecret"
@@ -13,9 +14,6 @@ router = APIRouter()
 
 # Password encryption configuration
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Temporary in-memory user database (to be replaced with MongoDB later)
-fake_users_db = {}
 
 # User model for registration and login
 class User(BaseModel):
@@ -49,31 +47,23 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 # User registration
 @router.post("/register")
 async def register(user: User):
-    if user.username in fake_users_db:
+    existing_user = users_collection.find_one({"username": user.username})
+    if existing_user:
         raise HTTPException(status_code=400, detail="User already registered")
     
-    fake_users_db[user.username] = {
+    user_dict = {
+        "username": user.username,
         "email": user.email,
-        "password": hash_password(user.password),
+        "password": hash_password(user.password)
     }
+    users_collection.insert_one(user_dict)
     return {"message": "User registered successfully"}
 
 # User login and JWT token generation
 @router.post("/login", response_model=Token)
 async def login(user: UserLogin):
-    print("Fake users DB:", fake_users_db)  # Debugging: check database
-    print("User trying to log in:", user.username)
-    
-    db_user = fake_users_db.get(user.username)
-    if not db_user:
-        print("User not found")  # Debugging: user does not exist
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-    
-    print("Stored hash:", db_user["password"])
-    
-    print("Verification result:", verify_password(user.password, db_user["password"]))
-    
-    if not verify_password(user.password, db_user["password"]):
+    db_user = users_collection.find_one({"username": user.username})
+    if not db_user or not verify_password(user.password, db_user["password"]):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     
     token = create_access_token(data={"sub": user.username})
