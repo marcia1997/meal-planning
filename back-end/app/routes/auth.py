@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from passlib.context import CryptContext
-import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 
 # Secret key for signing JWT tokens
@@ -26,6 +26,10 @@ class User(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 # Function to hash passwords
 def hash_password(password: str):
@@ -55,10 +59,21 @@ async def register(user: User):
     return {"message": "User registered successfully"}
 
 # User login and JWT token generation
-@router.post("/login")
+@router.post("/login", response_model=Token)
 async def login(user: UserLogin):
+    print("Fake users DB:", fake_users_db)  # Debugging: check database
+    print("User trying to log in:", user.username)
+    
     db_user = fake_users_db.get(user.username)
-    if not db_user or not verify_password(user.password, db_user["password"]):
+    if not db_user:
+        print("User not found")  # Debugging: user does not exist
+        raise HTTPException(status_code=400, detail="Invalid credentials")
+    
+    print("Stored hash:", db_user["password"])
+    
+    print("Verification result:", verify_password(user.password, db_user["password"]))
+    
+    if not verify_password(user.password, db_user["password"]):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     
     token = create_access_token(data={"sub": user.username})
