@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from database import users_collection
-from app.models import UserPreferences
+from app.models.user import UserPreferences
 from bson import ObjectId
-from auth import get_current_user
+from app.routes.auth import get_current_user
+from pydantic import BaseModel
+from typing import List
+
+class UserPreferences(BaseModel):
+    dietary_preferences: List[str]
+    allergies: List[str]
+    health_goals: str
 
 router = APIRouter()
 
