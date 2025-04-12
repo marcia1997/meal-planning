@@ -1,0 +1,8 @@
+BACK-END
+
+python -m uvicorn main:app --reload
+
+
+FRONT-END
+npm run build
+npm start
