@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -11,6 +12,9 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 router = APIRouter()
+
+# OAuth2 scheme for extracting token from requests
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Password encryption configuration
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -43,6 +47,29 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# Function to get the current user from the token
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """ Extract user from JWT token """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = users_collection.find_one({"username": username})
+    if user is None:
+        raise credentials_exception
+
+    return user
 
 # User registration
 @router.post("/register")
