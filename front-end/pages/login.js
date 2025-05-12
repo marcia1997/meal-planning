@@ -1,5 +1,12 @@
-import AuthPage from '../components/components/AuthPage';
+// utils/axiosInstance.js
+import axios from 'axios';
 
-export default function Login() {
-  return <AuthPage isRegister={false} />;
-}
+const instance = axios.create({
+  baseURL: 'http://127.0.0.1:8000',   // force IPv4 loopback
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export default instance;
