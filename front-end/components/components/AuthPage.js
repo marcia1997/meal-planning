@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
+import axios from '../utils/axiosInstance'; 
 
 export default function AuthPage({ isRegister }) {
   const [form, setForm] = useState({ username: '', email: '', password: '' });
@@ -13,20 +13,25 @@ export default function AuthPage({ isRegister }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    
+
+    // Set the correct endpoint based on isRegister flag
+    const endpoint = isRegister ? '/auth/register' : '/auth/login';
+    console.log("🚀 Calling endpoint:", endpoint); // Log the endpoint being called
+
     try {
-      const endpoint = isRegister ? '/api/register' : '/api/login';
       const response = await axios.post(endpoint, form);
-      
+      console.log(response.data); // Log the response for debugging
+
+      // Handle success
       if (!isRegister) {
-        localStorage.setItem('token', response.data.access_token);
+        localStorage.setItem('token', response.data.access_token); // Store token in localStorage
         router.push('/dashboard');
       } else {
         router.push('/login');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Something went wrong');
+      console.error("🚨 Error:", err);
+      setError(err.response?.data?.detail || 'Something went wrong'); // Show error message
     }
   };
 
@@ -73,7 +78,9 @@ export default function AuthPage({ isRegister }) {
         </form>
         <p className="text-center text-sm mt-4">
           {isRegister ? 'Already have an account?' : "Don't have an account?"} 
-          <a href={isRegister ? '/login' : '/register'} className="text-blue-500"> {isRegister ? 'Login' : 'Register'}</a>
+          <a href={isRegister ? '/login' : '/register'} className="text-blue-500"> 
+            {isRegister ? 'Login' : 'Register'}
+          </a>
         </p>
       </div>
     </div>
